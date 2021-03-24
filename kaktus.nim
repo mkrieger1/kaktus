@@ -16,6 +16,8 @@ type
     Richtig
     Falsch
 
+  Ergebnisliste = array[Richtig..Falsch, Natural]
+
 const
   aufgaben = [
     Plus: Aufgabe(
@@ -33,7 +35,7 @@ const
   ]
 
 var
-  ergebnisse: array[Richtig..Falsch, int]
+  ergebnisse: Ergebnisliste
   startZeit: DateTime
 
 proc nimmZahl: int =
@@ -67,7 +69,7 @@ proc stellAufgabe =
     echo "falsch :("
     inc ergebnisse[Falsch]
 
-func score (ergebnisse: array[Richtig..Falsch, int], dauer: Duration): float =
+func score (ergebnisse: Ergebnisliste, dauer: Duration): float =
   pow(float(ergebnisse[Richtig]), 1.5) / float(dauer.inMilliseconds) * 1e6
 
 func alsMinuten (dauer: Duration): string =
