@@ -1,6 +1,4 @@
-import random, strutils, strformat
-
-randomize()
+import random, strutils, strformat, times
 
 type
   Rechenart = enum
@@ -13,6 +11,10 @@ type
   Aufgabe = object
     symbol: char
     rechnung: Rechenoperation
+
+  Ergebnis = enum
+    Richtig
+    Falsch
 
 const
   aufgaben = [
@@ -29,6 +31,10 @@ const
       rechnung: proc (a, b: int): int = a * b
     )
   ]
+
+var
+  ergebnisse: array[Richtig..Falsch, int]
+  startZeit: DateTime
 
 proc nimmZahl: int =
   while true:
@@ -56,7 +62,25 @@ proc stellAufgabe =
 
   if nimmZahl() == richtig:
     echo "richtig :)"
+    inc ergebnisse[Richtig]
   else:
     echo "falsch :("
+    inc ergebnisse[Falsch]
 
-stellAufgabe()
+proc schluss {.noconv.} =
+  let dauer = (now() - startZeit).toParts
+  echo(
+    '\n',
+    fmt"{ergebnisse[Richtig]} richtige und " &
+    fmt"{ergebnisse[Falsch]} falsche Ergebnisse in " &
+    fmt"{dauer[Minutes]}:{dauer[Seconds]:02d} Minuten"
+  )
+  quit()
+
+
+randomize()
+setControlCHook(schluss)
+
+startZeit = now()
+while true:
+  stellAufgabe()
