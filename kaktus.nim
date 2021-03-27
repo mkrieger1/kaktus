@@ -31,6 +31,10 @@ type
 
   Ergebnisliste = array[Ergebnis, Natural]
 
+  Spiel = object
+    startZeit: DateTime
+    ergebnisse: Ergebnisliste
+
 proc zufallsAufgabe: Aufgabe =
   let rechenart = rand(Rechenart.low..Rechenart.high)  # TODO macro?
   let bereich =
@@ -69,7 +73,7 @@ proc fragNochmal: Nochmal =
   else:
     KeineAufgabeMehr
 
-proc stellAufgabe(ergebnisse: var Ergebnisliste): Nochmal =
+proc stellAufgabe(spiel: var Spiel): Nochmal =
   let aufgabe = zufallsAufgabe()
   let richtig = rechne aufgabe
   zeige aufgabe
@@ -79,10 +83,10 @@ proc stellAufgabe(ergebnisse: var Ergebnisliste): Nochmal =
   of Zahl:
     if eingabe.zahl == richtig:
       echo "richtig :)"
-      inc ergebnisse[Richtig]
+      inc spiel.ergebnisse[Richtig]
     else:
       echo "falsch :("
-      inc ergebnisse[Falsch]
+      inc spiel.ergebnisse[Falsch]
     NochneAufgabe
   of KeineZahl:
     echo eingabe.text, " ist keine Zahl. Nochmal?"
@@ -95,20 +99,22 @@ func alsMinuten (dauer: Duration): string =
   let parts = dauer.toParts
   fmt"{parts[Minutes]}:{parts[Seconds]:02d} Minuten"
 
-proc spiel =
+proc neuesSpiel: Spiel =
   randomize()
-  var ergebnisse: Ergebnisliste
-  let startZeit = now()
-  while stellAufgabe(ergebnisse) == NochneAufgabe:
-    discard
-  let dauer = now() - startZeit
+  Spiel(startZeit: now())
+
+proc schluss (spiel: Spiel) =
+  let dauer = now() - spiel.startZeit
   echo(
     '\n',
-    fmt"{ergebnisse[Richtig]} richtige und " &
-    fmt"{ergebnisse[Falsch]} falsche Ergebnisse in " &
+    fmt"{spiel.ergebnisse[Richtig]} richtige und " &
+    fmt"{spiel.ergebnisse[Falsch]} falsche Ergebnisse in " &
     fmt"{dauer.alsMinuten} " &
-    fmt"(Score: {score(ergebnisse, dauer):.1f})"
+    fmt"(Score: {score(spiel.ergebnisse, dauer):.1f})"
   )
 
 when isMainModule:
-  spiel()
+  var spiel = neuesSpiel()
+  while spiel.stellAufgabe() == NochneAufgabe:
+    discard
+  spiel.schluss
