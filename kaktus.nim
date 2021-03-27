@@ -6,77 +6,101 @@ type
     Minus
     Mal
 
-  Rechenoperation = proc (a, b: int): int {.noSideEffect.}
-
   Aufgabe = object
-    symbol: char
-    rechnung: Rechenoperation
+    art: Rechenart
+    a, b: int
+
+  EingabeArt = enum
+    Zahl
+    KeineZahl
+
+  Eingabe = object
+    case art: EingabeArt
+    of Zahl:
+      zahl: int
+    of KeineZahl:
+      text: string
+
+  Nochmal = enum
+    NochneAufgabe
+    KeineAufgabeMehr
 
   Ergebnis = enum
     Richtig
     Falsch
 
-  Ergebnisliste = array[Richtig..Falsch, Natural]
+  Ergebnisliste = array[Ergebnis, Natural]
 
-const
-  aufgaben = [
-    Plus: Aufgabe(
-      symbol: '+',
-      rechnung: proc (a, b: int): int = a + b
-    ),
-    Minus: Aufgabe(
-      symbol: '-',
-      rechnung: proc (a, b: int): int = a - b
-    ),
-    Mal: Aufgabe(
-      symbol: '*',
-      rechnung: proc (a, b: int): int = a * b
-    )
-  ]
-
-var
-  ergebnisse: Ergebnisliste
-  startZeit: DateTime
-
-proc nimmZahl: int =
-  while true:
-    let text = readLine(stdin)
-    try:
-      return parseInt(text)
-    except ValueError:
-      echo text, " ist keine Zahl"
-
-proc stellAufgabe =
-  let rechenart = rand(Plus..Mal)
+proc zufallsAufgabe: Aufgabe =
+  let rechenart = rand(Rechenart.low..Rechenart.high)  # TODO macro?
   let bereich =
     if rechenart == Mal:
       1..15
     else:
       1..100
+  Aufgabe(art: rechenart, a: rand(bereich), b: rand(bereich))
 
-  let a = rand(bereich)
-  let b = rand(bereich)
+proc zeige(aufgabe: Aufgabe) =
+  let symbol =
+    case aufgabe.art:
+    of Plus: '+'
+    of Minus: '-'
+    of Mal: '*'
+  echo fmt"{aufgabe.a} {symbol} {aufgabe.b} = ?"
 
-  let aufgabe = aufgaben[rechenart]
-  let richtig = aufgabe.rechnung(a, b)
+func rechne(aufgabe: Aufgabe): int =
+  case aufgabe.art:
+  of Plus: aufgabe.a + aufgabe.b
+  of Minus: aufgabe.a - aufgabe.b
+  of Mal: aufgabe.a * aufgabe.b
 
-  echo fmt"{a} {aufgabe.symbol} {b} = ?"
+proc nimmZahl: Eingabe =
+  let text = stdin.readLine
+  try:
+    Eingabe(art: Zahl, zahl: parseInt(text))
+  except ValueError:
+    Eingabe(art: KeineZahl, text: text)
 
-  if nimmZahl() == richtig:
-    echo "richtig :)"
-    inc ergebnisse[Richtig]
+proc fragNochmal: Nochmal =
+  let text = stdin.readLine
+  case text.toLower:
+  of "j", "ja":
+    NochneAufgabe
   else:
-    echo "falsch :("
-    inc ergebnisse[Falsch]
+    KeineAufgabeMehr
+
+proc stellAufgabe(ergebnisse: var Ergebnisliste): Nochmal =
+  let aufgabe = zufallsAufgabe()
+  let richtig = rechne aufgabe
+  zeige aufgabe
+
+  let eingabe = nimmZahl()
+  case eingabe.art:
+  of Zahl:
+    if eingabe.zahl == richtig:
+      echo "richtig :)"
+      inc ergebnisse[Richtig]
+    else:
+      echo "falsch :("
+      inc ergebnisse[Falsch]
+    NochneAufgabe
+  of KeineZahl:
+    echo eingabe.text, " ist keine Zahl. Nochmal?"
+    fragNochmal()
 
 func score (ergebnisse: Ergebnisliste, dauer: Duration): float =
-  pow(float(ergebnisse[Richtig]), 1.5) / float(dauer.inMilliseconds) * 1e6
+  ergebnisse[Richtig].float.pow(1.5) / dauer.inMilliseconds.float * 1e6
 
 func alsMinuten (dauer: Duration): string =
   let parts = dauer.toParts
   fmt"{parts[Minutes]}:{parts[Seconds]:02d} Minuten"
 
-proc schluss {.noconv.} =
+proc spiel =
+  randomize()
+  var ergebnisse: Ergebnisliste
+  let startZeit = now()
+  while stellAufgabe(ergebnisse) == NochneAufgabe:
+    discard
   let dauer = now() - startZeit
   echo(
     '\n',
@@ -85,12 +109,6 @@ proc schluss {.noconv.} =
     fmt"{dauer.alsMinuten} " &
     fmt"(Score: {score(ergebnisse, dauer):.1f})"
   )
-  quit()
 
-
-randomize()
-setControlCHook(schluss)
-
-startZeit = now()
-while true:
-  stellAufgabe()
+when isMainModule:
+  spiel()
